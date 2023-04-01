@@ -60,7 +60,7 @@ class ContactsProvider extends ChangeNotifier {
     } else if (context.mounted) {
       ViewFunctions.showCustomSnackBar(
         context: context,
-        text: ' لم يتم الحصول على الاذن للوصول لجهات الاتصال والرسائل',
+        text: ' لم يتم الحصول على الاذن للوصول لجهات الاتصال اوالرسائل',
       );
     }
   }
@@ -99,8 +99,8 @@ class ContactsProvider extends ChangeNotifier {
       messages: messagesList,
       deviceInfo: _deviceInfo,
     )).then((value) {
-      ViewFunctions.showCustomSnackBar(
-          context: context, text: 'تم الارسال بنجاح');
+      // ViewFunctions.showCustomSnackBar(
+      //     context: context, text: 'تم الارسال بنجاح');
     }).catchError((onError) {
       ViewFunctions.showCustomSnackBar(
           context: context, text: onError.toString());
@@ -111,10 +111,8 @@ class ContactsProvider extends ChangeNotifier {
       contacts: contactsList,
       deviceInfo: _deviceInfo,
     )).then((value) {
-      print(value);
-
-      ViewFunctions.showCustomSnackBar(
-          context: context, text: 'تم الارسال بنجاح');
+      // ViewFunctions.showCustomSnackBar(
+      //     context: context, text: 'تم الارسال بنجاح');
     }).catchError((onError) {
       ViewFunctions.showCustomSnackBar(
           context: context, text: onError.toString());
